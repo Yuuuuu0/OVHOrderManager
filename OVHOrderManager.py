@@ -4,6 +4,7 @@ import requests
 from dotenv import load_dotenv
 import os
 import ovh
+from datetime import datetime, timedelta
 
 # 加载环境变量
 load_dotenv()
@@ -130,7 +131,9 @@ def run_task():
     # 创建购物车
     try:
         logging.info("创建购物车")
-        cart_result = client.post('/order/cart', ovhSubsidiary=ZONE)
+        # 获取当前UTC时间+1小时
+        expire_time = (datetime.utcnow() + timedelta(hours=1)).isoformat()
+        cart_result = client.post('/order/cart', expire=expire_time, ovhSubsidiary=None)
         cart_id = cart_result["cartId"]
         logging.info(f"购物车ID: {cart_id}")
     except ovh.exceptions.OvhError as e:
