@@ -91,7 +91,7 @@ def run_task():
     try:
         # 获取数据中心的可用性信息
         result = client.get('/dedicated/server/datacenter/availabilities', planCode=PLAN_CODE)
-    except ovh.exceptions.OvhError as e:
+    except ovh.exceptions.APIError as e:
         logging.error(f"获取OVH数据中心可用性时失败: {e}")
         return
 
@@ -136,7 +136,7 @@ def run_task():
         cart_result = client.post('/order/cart', expire=expire_time, ovhSubsidiary=None)
         cart_id = cart_result["cartId"]
         logging.info(f"购物车ID: {cart_id}")
-    except ovh.exceptions.OvhError as e:
+    except ovh.exceptions.APIError as e:
         logging.error(f"创建购物车失败: {e}")
         return
 
@@ -144,7 +144,7 @@ def run_task():
     try:
         logging.info("绑定购物车")
         client.post(f"/order/cart/{cart_id}/assign")
-    except ovh.exceptions.OvhError as e:
+    except ovh.exceptions.APIError as e:
         logging.error(f"绑定购物车失败: {e}")
         return
 
@@ -155,7 +155,7 @@ def run_task():
                                   duration="P1M", quantity=1)
         item_id = item_result["itemId"]
         logging.info(f"商品ID: {item_id}")
-    except ovh.exceptions.OvhError as e:
+    except ovh.exceptions.APIError as e:
         logging.error(f"将商品添加到购物车失败: {e}")
         return
 
@@ -163,7 +163,7 @@ def run_task():
     try:
         logging.info("检查必需的配置")
         required_config = client.get(f"/order/cart/{cart_id}/item/{item_id}/requiredConfiguration")
-    except ovh.exceptions.OvhError as e:
+    except ovh.exceptions.APIError as e:
         logging.error(f"获取必需配置失败: {e}")
         return
 
@@ -187,7 +187,7 @@ def run_task():
             logging.info(f"配置 {config['label']}")
             client.post(f"/order/cart/{cart_id}/item/{item_id}/configuration", label=config["label"],
                         value=config["value"])
-        except ovh.exceptions.OvhError as e:
+        except ovh.exceptions.APIError as e:
             logging.error(f"配置 {config['label']} 失败: {e}")
             return
 
@@ -196,7 +196,7 @@ def run_task():
             logging.info(f"添加选项 {option}")
             client.post(f"/order/cart/{cart_id}/eco/options", duration="P1M", itemId=int(item_id), planCode=option,
                         pricingMode="default", quantity=1)
-        except ovh.exceptions.OvhError as e:
+        except ovh.exceptions.APIError as e:
             logging.error(f"添加选项 {option} 失败: {e}")
             return
 
@@ -206,7 +206,7 @@ def run_task():
         client.get(f"/order/cart/{cart_id}/checkout")
         client.post(f"/order/cart/{cart_id}/checkout", autoPayWithPreferredPaymentMethod=False,
                     waiveRetractationPeriod=True)
-    except ovh.exceptions.OvhError as e:
+    except ovh.exceptions.APIError as e:
         logging.error(f"结账失败: {e}")
         return
 
