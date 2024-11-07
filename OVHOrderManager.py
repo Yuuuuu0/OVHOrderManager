@@ -1,38 +1,41 @@
 import logging
 import time
-
 import requests
+from dotenv import load_dotenv
+import os
+import ovh
 
-# 常量定义
-APP_KEY = ""
-APP_SECRET = ""
-CONSUMER_KEY = ""
-REGION = "ovh-eu"
-IAM = "python-ovh-ie"
-ZONE = "IE"
-# 推送配置
-TG_TOKEN = ""
-TG_CHAT_ID = ""
-BARK_URL = ""
+# 加载环境变量
+load_dotenv()
 
-# 需要抢购的配置
-serverName = "ks-a"
-planCode = "24ska01"
-options = [
-    "bandwidth-100-24sk",
-    "ram-64g-noecc-2133-24ska01",
-    "softraid-1x480ssd-24ska01"
-]
+# 获取配置
+APP_KEY = os.getenv("APP_KEY")
+APP_SECRET = os.getenv("APP_SECRET")
+CONSUMER_KEY = os.getenv("CONSUMER_KEY")
+REGION = os.getenv("REGION")
+IAM = os.getenv("IAM")
+ZONE = os.getenv("ZONE")
+TG_TOKEN = os.getenv("TG_TOKEN")
+TG_CHAT_ID = os.getenv("TG_CHAT_ID")
+BARK_URL = os.getenv("BARK_URL")
+SERVER_NAME = os.getenv("SERVER_NAME")
+PLAN_CODE = os.getenv("PLAN_CODE")
+OPTIONS = os.getenv("OPTIONS").split(",")
 
 # 设置日志输出
 logging.basicConfig(
-    level=logging.INFO,  # 记录INFO及以上级别的日志
-    format='%(asctime)s - %(levelname)s - %(message)s',  # 日志格式
-    datefmt='%Y年%m月%d日 %H:%M:%S',  # 日期时间格式
-    handlers=[
-        logging.StreamHandler(),  # 输出到控制台
-        # logging.FileHandler('monitor.log')  # 同时输出到文件
-    ]
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y年%m月%d日 %H:%M:%S',
+    handlers=[logging.StreamHandler()]
+)
+
+# 初始化OVH客户端
+client = ovh.Client(
+    endpoint='ovh-eu',
+    application_key=APP_KEY,
+    application_secret=APP_SECRET,
+    consumer_key=CONSUMER_KEY
 )
 
 
@@ -42,7 +45,7 @@ def send_msg(message):
 
 def send_telegram_msg(message):
     """向指定的 Telegram 发送消息"""
-    if not TG_TOKEN:  # 如果TG_TOKEN为空，直接返回True
+    if not TG_TOKEN:
         logging.info("TG_TOKEN为空，跳过发送消息")
         return True
 
@@ -67,7 +70,7 @@ def send_telegram_msg(message):
 
 def send_bark_notification(message):
     """向指定的Bark发送通知"""
-    if not BARK_URL:  # 如果BARK_URL为空，直接返回True
+    if not BARK_URL:
         logging.info("BARK_URL为空，跳过发送通知")
         return True
 
@@ -84,18 +87,10 @@ def send_bark_notification(message):
 
 def run_task():
     """执行任务，检查OVH的可用性并处理购买流程"""
-    # 创建OVH API客户端
     try:
         # 获取数据中心的可用性信息
-        url = f"https://api.ovh.com/1.0/dedicated/server/datacenter/availabilities"
-        headers = {
-            "X-Ovh-Application": APP_KEY,
-            "X-Ovh-Consumer": CONSUMER_KEY
-        }
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        result = response.json()  # 解析返回的JSON数据
-    except requests.exceptions.RequestException as e:
+        result = client.get('/dedicated/server/datacenter/availabilities', planCode=PLAN_CODE)
+    except ovh.exceptions.OvhError as e:
         logging.error(f"获取OVH数据中心可用性时失败: {e}")
         return
 
@@ -103,7 +98,7 @@ def run_task():
     fqn, plan_code, datacenter = None, None, None
 
     for item in result:
-        if item["planCode"] == planCode:  # 如果找到了符合条件的计划
+        if item["planCode"] == PLAN_CODE:
             fqn = item["fqn"]
             plan_code = item["planCode"]
             datacenters = item["datacenters"]
@@ -116,7 +111,7 @@ def run_task():
                 logging.info(f"Datacenter: {datacenter}")
                 logging.info("------------------------")
 
-                if availability != "unavailable":  # 如果该数据中心是可用的
+                if availability != "unavailable":
                     found_available = True
                     break
 
@@ -128,63 +123,44 @@ def run_task():
         logging.info("没有可购买的记录")
         return
 
-    msg = f"{IAM}: 在 {datacenter} 找到 {serverName} 可用!"
+    msg = f"{IAM}: 在 {datacenter} 找到 {SERVER_NAME} 可用!"
     if not send_msg(msg):
         logging.error("发送消息通知失败")
 
     # 创建购物车
     try:
         logging.info("创建购物车")
-        url = f"https://api.ovh.com/1.0/order/cart"
-        payload = {"ovhSubsidiary": ZONE}
-        response = requests.post(url, json=payload, headers=headers)
-        response.raise_for_status()
-        cart_result = response.json()
-    except requests.exceptions.RequestException as e:
+        cart_result = client.post('/order/cart', ovhSubsidiary=ZONE)
+        cart_id = cart_result["cartId"]
+        logging.info(f"购物车ID: {cart_id}")
+    except ovh.exceptions.OvhError as e:
         logging.error(f"创建购物车失败: {e}")
         return
-
-    cart_id = cart_result["cartId"]
-    logging.info(f"购物车ID: {cart_id}")
 
     # 绑定购物车
     try:
         logging.info("绑定购物车")
-        url = f"https://api.ovh.com/1.0/order/cart/{cart_id}/assign"
-        response = requests.post(url, headers=headers)
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
+        client.post(f"/order/cart/{cart_id}/assign")
+    except ovh.exceptions.OvhError as e:
         logging.error(f"绑定购物车失败: {e}")
         return
 
     # 将商品添加到购物车
     try:
         logging.info("将商品添加到购物车")
-        url = f"https://api.ovh.com/1.0/order/cart/{cart_id}/eco"
-        payload = {
-            "planCode": plan_code,
-            "pricingMode": "default",
-            "duration": "P1M",  # 持续时间为1个月
-            "quantity": 1
-        }
-        response = requests.post(url, json=payload, headers=headers)
-        response.raise_for_status()
-        item_result = response.json()
-    except requests.exceptions.RequestException as e:
+        item_result = client.post(f"/order/cart/{cart_id}/eco", planCode=plan_code, pricingMode="default",
+                                  duration="P1M", quantity=1)
+        item_id = item_result["itemId"]
+        logging.info(f"商品ID: {item_id}")
+    except ovh.exceptions.OvhError as e:
         logging.error(f"将商品添加到购物车失败: {e}")
         return
-
-    item_id = item_result["itemId"]
-    logging.info(f"商品ID: {item_id}")
 
     # 获取必需的配置
     try:
         logging.info("检查必需的配置")
-        url = f"https://api.ovh.com/1.0/order/cart/{cart_id}/item/{item_id}/requiredConfiguration"
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        required_config = response.json()
-    except requests.exceptions.RequestException as e:
+        required_config = client.get(f"/order/cart/{cart_id}/item/{item_id}/requiredConfiguration")
+    except ovh.exceptions.OvhError as e:
         logging.error(f"获取必需配置失败: {e}")
         return
 
@@ -206,53 +182,33 @@ def run_task():
     for config in configurations:
         try:
             logging.info(f"配置 {config['label']}")
-            url = f"https://api.ovh.com/1.0/order/cart/{cart_id}/item/{item_id}/configuration"
-            payload = {"label": config["label"], "value": config["value"]}
-            response = requests.post(url, json=payload, headers=headers)
-            response.raise_for_status()
-        except requests.exceptions.RequestException as e:
+            client.post(f"/order/cart/{cart_id}/item/{item_id}/configuration", label=config["label"],
+                        value=config["value"])
+        except ovh.exceptions.OvhError as e:
             logging.error(f"配置 {config['label']} 失败: {e}")
             return
 
-    for option in options:
+    for option in OPTIONS:
         try:
             logging.info(f"添加选项 {option}")
-            url = f"https://api.ovh.com/1.0/order/cart/{cart_id}/eco/options"
-            payload = {
-                "duration": "P1M",  # 选项持续时间为1个月
-                "itemId": int(item_id),
-                "planCode": option,
-                "pricingMode": "default",
-                "quantity": 1
-            }
-            response = requests.post(url, json=payload, headers=headers)
-            response.raise_for_status()
-        except requests.exceptions.RequestException as e:
+            client.post(f"/order/cart/{cart_id}/eco/options", duration="P1M", itemId=int(item_id), planCode=option,
+                        pricingMode="default", quantity=1)
+        except ovh.exceptions.OvhError as e:
             logging.error(f"添加选项 {option} 失败: {e}")
             return
 
     # 进行结账
     try:
         logging.info("结账")
-        url = f"https://api.ovh.com/1.0/order/cart/{cart_id}/checkout"
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        checkout_result = response.json()
-
-        # 提交结账请求
-        url = f"https://api.ovh.com/1.0/order/cart/{cart_id}/checkout"
-        payload = {
-            "autoPayWithPreferredPaymentMethod": False,
-            "waiveRetractationPeriod": True
-        }
-        response = requests.post(url, json=payload, headers=headers)
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
+        client.get(f"/order/cart/{cart_id}/checkout")
+        client.post(f"/order/cart/{cart_id}/checkout", autoPayWithPreferredPaymentMethod=False,
+                    waiveRetractationPeriod=True)
+    except ovh.exceptions.OvhError as e:
         logging.error(f"结账失败: {e}")
         return
 
-    logging.info(f"完成{serverName}抢购！")
-    msg = f"{IAM}: {serverName} 在 {datacenter} 下单成功"
+    logging.info(f"完成{SERVER_NAME}抢购！")
+    msg = f"{IAM}: {SERVER_NAME} 在 {datacenter} 下单成功"
     if not send_msg(msg):
         logging.error("发送购买成功通知失败")
 

@@ -1,0 +1,35 @@
+# Python相关
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.pyd
+*.whl
+*.egg-info/
+dist/
+build/
+
+# 虚拟环境
+venv/
+env/
+
+# 配置文件
+.env
+*.env
+
+# 日志文件
+*.log
+
+# IDE/编辑器配置
+.vscode/
+.idea/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# Pytest配置
+.pytest_cache/
+
+# Jupyter Notebook检查点
+.ipynb_checkpoints/
