@@ -4,7 +4,7 @@ import requests
 from dotenv import load_dotenv
 import os
 import ovh
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # 加载环境变量
 load_dotenv()
@@ -22,6 +22,8 @@ BARK_URL = os.getenv("BARK_URL")
 SERVER_NAME = os.getenv("SERVER_NAME")
 PLAN_CODE = os.getenv("PLAN_CODE")
 OPTIONS = os.getenv("OPTIONS").split(",")
+# 加载优先级配置
+DATACENTER_PRIORITY = os.getenv("DATACENTER_PRIORITY", "fra,gra").split(",")
 
 # 设置日志输出
 logging.basicConfig(
@@ -41,7 +43,8 @@ client = ovh.Client(
 
 
 def send_msg(message):
-    return send_telegram_msg(message) and send_bark_notification(message)
+    # return send_telegram_msg(message) and send_bark_notification(message)
+    return send_telegram_msg(message)
 
 
 def send_telegram_msg(message):
@@ -98,11 +101,17 @@ def run_task():
     found_available = False
     fqn, plan_code, datacenter = None, None, None
 
+    # 定义优先级，按照DATACENTER_PRIORITY中的顺序
+    priority = {dc: idx + 1 for idx, dc in enumerate(DATACENTER_PRIORITY)}
+
     for item in result:
         if item["planCode"] == PLAN_CODE:
             fqn = item["fqn"]
             plan_code = item["planCode"]
             datacenters = item["datacenters"]
+
+            # 按照优先级排序
+            datacenters.sort(key=lambda dc: priority.get(dc["datacenter"], 999))
 
             for dc_info in datacenters:
                 availability = dc_info["availability"]
@@ -132,8 +141,8 @@ def run_task():
     try:
         logging.info("创建购物车")
         # 获取当前UTC时间+1小时
-        expire_time = (datetime.utcnow() + timedelta(hours=1)).isoformat()
-        cart_result = client.post('/order/cart', expire=expire_time, ovhSubsidiary=None)
+        expire_time = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()
+        cart_result = client.post('/order/cart', expire=expire_time, ovhSubsidiary=ZONE)
         cart_id = cart_result["cartId"]
         logging.info(f"购物车ID: {cart_id}")
     except ovh.exceptions.APIError as e:
