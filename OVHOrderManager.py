@@ -35,7 +35,7 @@ logging.basicConfig(
 
 # 初始化OVH客户端
 client = ovh.Client(
-    endpoint='ovh-eu',
+    endpoint=REGION,
     application_key=APP_KEY,
     application_secret=APP_SECRET,
     consumer_key=CONSUMER_KEY
