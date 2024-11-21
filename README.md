@@ -16,9 +16,9 @@
 - **APP_KEY**: 你的 OVH 应用 API Key。
 - **APP_SECRET**: 你的 OVH 应用 API Secret。
 - **CONSUMER_KEY**: 你的 OVH Consumer Key。
-- **REGION**: OVH 数据中心区域（如 `ovh-eu`）。
+- **REGION**: OVH 数据中心区域（如 `ovh-eu`、`ovh-ca`）。
 - **IAM**: 标识用户的名称或 ID（用于发送通知时）。
-- **ZONE**: OVH 账号所在的区域（如 `IE`）。
+- **ZONE**: OVH 账号所在的区域（如 `IE`、`CA`）。
 - **TG_TOKEN**: Telegram 机器人 Token。
 - **TG_CHAT_ID**: Telegram 频道或用户的 Chat ID。
 - **BARK_URL**: Bark 推送的 URL（如果使用 Bark 推送通知）。
