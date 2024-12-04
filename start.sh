@@ -1,30 +1,23 @@
 #!/bin/bash
 
-# 设置工作目录为脚本所在目录
-# shellcheck disable=SC2164
-cd "$(dirname "$0")"
+# 设置虚拟环境路径
+VENV_DIR="venv"
 
-# 检查虚拟环境是否存在
-if [ ! -d "venv" ]; then
-    echo "正在创建虚拟环境..."
-    python3 -m venv venv
-    source venv/bin/activate
-    echo "正在安装依赖..."
+# 检查虚拟环境是否存在，如果不存在则创建并安装依赖
+if [ ! -d "$VENV_DIR" ]; then
+    echo "虚拟环境不存在，正在创建..."
+    python3 -m venv $VENV_DIR
+    source $VENV_DIR/bin/activate
+    echo "安装依赖..."
     pip install -r requirements.txt
 else
-    source venv/bin/activate
+    # 如果虚拟环境存在，直接激活
+    source $VENV_DIR/bin/activate
 fi
 
-# 检查.env文件是否存在
-if [ ! -f ".env" ]; then
-    echo "错误：.env 文件不存在！"
-    echo "请根据 .env.example 创建 .env 文件"
-    exit 1
-fi
+# 启动Python脚本
+echo "启动Python脚本..."
+nohup python OVHOrderManager.py > monitor.log 2>&1 &
 
-# 启动程序
-echo "启动OVH订单管理器..."
-python main.py
-
-# 如果程序异常退出，保持终端窗口打开
-read -p "程序已退出，按回车键关闭窗口..."
+# 输出进程ID
+echo "脚本已在后台运行，日志输出到 monitor.log"
