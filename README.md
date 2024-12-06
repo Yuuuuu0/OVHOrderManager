@@ -75,6 +75,7 @@ ovh-server-order/
 │   ├── services/
 │   │   └── notification.py    # 通知服务
 │   └── utils/
+│       ├── cart_cleaner.py    # 批量删除购物车 暂时用不到只是留下了一个工具类
 │       └── config.py          # 配置管理
 ├── .env.example               # 环境变量示例
 ├── .gitignore
@@ -94,7 +95,7 @@ ovh-server-order/
 2. 查看运行日志：
 
 ```bash
-tail -f monitor.log
+tail -f logs/monitor.log
 ```
 
 3. 停止脚本：

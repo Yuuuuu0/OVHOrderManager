@@ -36,9 +36,15 @@ else
     source venv/bin/activate
 fi
 
+# 检查并创建日志目录
+if [ ! -d "logs" ]; then
+    echo "创建日志目录..."
+    mkdir -p logs
+fi
+
 # 启动Python脚本
 echo "启动Python脚本..."
-nohup python3 main.py > monitor.log 2>&1 &
+nohup python3 main.py > logs/monitor.log 2>&1 &
 
-echo "脚本已在后台运行，日志输出到 monitor.log"
-echo "使用 'tail -f monitor.log' 查看实时日志"
+echo "脚本已在后台运行，日志输出到 logs/monitor.log"
+echo "使用 'tail -f logs/monitor.log' 查看实时日志"

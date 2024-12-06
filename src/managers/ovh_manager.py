@@ -154,3 +154,32 @@ class OVHManager:
 
         except ovh.exceptions.APIError as e:
             logging.error(f"结账失败: {e}")
+            self.delete_cart(cart_id)
+            raise e
+
+    def check_cart_exists(self, cart_id):
+        """检查购物车是否存在"""
+        try:
+            result = self.client.get(f"/order/cart/{cart_id}")
+            logging.info(f"购物车 {cart_id} 存在")
+            return True
+        except Exception as e:
+            if "Cart not found" in str(e):
+                logging.info(f"购物车 {cart_id} 不存在")
+                return False
+            logging.error(f"检查购物车 {cart_id} 状态时发生错误: {str(e)}")
+            raise e
+
+    def delete_cart(self, cart_id):
+        """删除购物车"""
+        try:
+            if self.check_cart_exists(cart_id):
+                logging.info(f"开始删除购物车 {cart_id}")
+                self.client.delete(f"/order/cart/{cart_id}")
+                logging.info(f"购物车 {cart_id} 删除成功")
+                return True
+            logging.info(f"购物车 {cart_id} 不存在，无需删除")
+            return False
+        except Exception as e:
+            logging.error(f"删除购物车 {cart_id} 失败: {str(e)}")
+            raise e
