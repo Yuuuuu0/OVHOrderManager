@@ -44,7 +44,8 @@ fi
 
 # 启动Python脚本
 echo "启动Python脚本..."
-nohup python3 main.py > logs/monitor.log 2>&1 &
+nohup python3 main.py > logs/monitor.log 2>&1 & echo $! > logs/monitor.pid
 
 echo "脚本已在后台运行，日志输出到 logs/monitor.log"
 echo "使用 'tail -f logs/monitor.log' 查看实时日志"
+echo "进程 PID 已保存到 logs/monitor.pid"

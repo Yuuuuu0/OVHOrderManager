@@ -82,6 +82,7 @@ ovh-server-order/
 ├── requirements.txt           # 依赖列表
 ├── main.py                    # 程序入口
 └── start.sh                   # 启动脚本
+└── stop.sh                    # 停止脚本
 ```
 
 ## 使用说明
@@ -101,8 +102,7 @@ tail -f logs/monitor.log
 3. 停止脚本：
 
 ```bash
-ps aux | grep python3
-kill <进程ID>
+./stop.sh
 ```
 
 ## 注意事项
